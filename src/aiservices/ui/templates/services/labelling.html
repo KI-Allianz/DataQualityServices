@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Efficient Labelling (Few-Shot, FEAT){% endblock %}
+
+{% block content %}
+<h1 style="text-align:center;">Efficient Labelling (Few-Shot, FEAT)</h1>
+
+<style>
+  .wrap{max-width:1000px;margin:20px auto}
+  .card{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+  .label{font-weight:600;margin-bottom:6px;display:block}
+  input,textarea,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:6px}
+  .btn{background:#000;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{background:#111}
+  .muted{color:#666}
+  .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .red{border-left:4px solid #c00}
+  /* Workflow list */
+  .workflow h3{margin:0 0 8px 0}
+  .workflow ul{list-style:none;margin:0;padding:0}
+  .workflow li{background:#f3f3f3;border-radius:8px;padding:10px 12px;margin-bottom:8px}
+  .workflow strong{color:#0000FF}
+  .badge{display:inline-block;min-width:22px;text-align:center;font-weight:700;background:#0000FF;color:#fff;border-radius:999px;padding:2px 8px;margin-right:8px}
+  .is-active{outline:2px solid #0000FF; outline-offset:2px}
+</style>
+
+<div class="wrap">
+  {% if error %}
+    <div class="card red"><strong>Error:</strong> {{ error }}</div>
+  {% endif %}
+
+  <!-- Descriptive workflow (with current step highlighted) -->
+  <div class="card workflow">
+    <h3>The GUI is divided into five main sections:</h3>
+    <ul>
+      <li class="{% if step == 0 %}is-active{% endif %}">
+        <span class="badge">1</span>
+        <strong>Data Upload:</strong> Upload your dataset and provide a brief description.
+      </li>
+      <li class="{% if step == 1 %}is-active{% endif %}">
+        <span class="badge">2</span>
+        <strong>Data Processing:</strong> Process your dataset to prepare it for labelling and, if possible, auto-label it.
+      </li>
+      <li class="{% if step == 2 %}is-active{% endif %}">
+        <span class="badge">3</span>
+        <strong>Data Checking:</strong> Check whether the processed data is suitable for fast labelling.
+      </li>
+      <li class="{% if step == 3 %}is-active{% endif %}">
+        <span class="badge">4</span>
+        <strong>Data Labelling:</strong> Manually label a very small review subset.
+      </li>
+      <li class="{% if step == 4 %}is-active{% endif %}">
+        <span class="badge">5</span>
+        <strong>Data Download:</strong> Download your fully labelled dataset.
+      </li>
+    </ul>
+  </div>
+
+  <!-- 0. Data Upload -->
+  {% if step == 0 %}
+  <div class="card">
+    <h2 style="color:#0000FF;margin-top:0;">Upload Dataset (ZIP)</h2>
+    <p class="muted">ZIP must contain <code>support/</code> (class folders) and <code>query/</code> (images to label).</p>
+    <form action="{{ url_for('labelling_upload') }}" method="post" enctype="multipart/form-data">
+      <label class="label">dataset.zip</label>
+      <input type="file" name="dataset_zip" accept=".zip" required>
+      <label class="label" style="margin-top:10px;">Brief description (optional)</label>
+      <textarea name="desc" rows="3" placeholder="What dataset is this?"></textarea>
+      <button class="btn" style="margin-top:12px;">Start the service</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- 1. Data Processing (params) -->
+  {% if step == 1 %}
+  <div class="card">
+    <h2 style="color:#0000FF;margin-top:0;">Data Processing</h2>
+    <form action="{{ url_for('labelling_process') }}" method="post">
+      <div class="row">
+        <div><label class="label">way</label><input type="number" name="way" value="5" min="1"></div>
+        <div><label class="label">shot</label><input type="number" name="shot" value="5" min="1"></div>
+        <div><label class="label">episodes</label><input type="number" name="episodes" value="100" min="1"></div>
+      </div>
+      <p class="muted" style="margin-top:10px">
+        Backbone from checkpoint • Checkpoint: env <code>FEAT_CHECKPOINT_PATH</code>
+      </p>
+      <button class="btn" style="margin-top:10px;">Process & Auto-label</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- 2. Data Checking -->
+  {% if step == 2 %}
+  <div class="card">
+    <h2 style="color:#0000FF;margin-top:0;">Data Checking</h2>
+    <p>Total query images: <strong>{{ total }}</strong> • Uncertain (&lt; 0.60): <strong>{{ unsure }}</strong></p>
+    <h3>Predicted counts</h3>
+    <ul>
+      {% for c, n in counts %}<li><strong>{{ c }}</strong>: {{ n }}</li>{% endfor %}
+    </ul>
+    <form action="{{ url_for('labelling_label') }}" method="post">
+      <h3>Manual labelling (sample)</h3>
+      {% set sample = state['label_sample'] %}
+      {% if sample and sample|length > 0 %}
+        {% for i in sample %}
+          {% set fname = state['query_paths'][i][0] %}
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+            <div style="width:280px">{{ fname }}</div>
+            <select name="label_{{ i }}">
+              <option value="">-- keep auto label: {{ state['preds'][i] }} --</option>
+              {% for cls in state['classes'] %}
+                <option value="{{ cls }}">{{ cls }}</option>
+              {% endfor %}
+              <option value="uncertain">uncertain</option>
+            </select>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">No images to review.</p>
+      {% endif %}
+      <button class="btn" style="margin-top:10px;">Save manual labels</button>
+    </form>
+    <form action="{{ url_for('labelling_finalize') }}" method="post" style="margin-top:10px">
+      <button class="btn">Finalize & Build Download</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- 3. Finalization -->
+  {% if step == 3 %}
+  <div class="card">
+    <h2 style="color:#0000FF;margin-top:0;">Finalize</h2>
+    <p>Your manual edits were saved. Click build to generate the labelled dataset.</p>
+    <form action="{{ url_for('labelling_finalize') }}" method="post">
+      <button class="btn">Build & Prepare Download</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- 4. Data Download -->
+  {% if step == 4 %}
+  <div class="card">
+    <h2 style="color:#0000FF;margin-top:0;">Data Download</h2>
+    <p>Download the fully labelled dataset (images arranged into predicted folders + CSV).</p>
+    <a class="btn" href="{{ url_for('labelling_download') }}">Download labelled ZIP</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

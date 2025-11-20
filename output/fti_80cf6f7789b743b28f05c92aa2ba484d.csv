@@ -1,0 +1,9 @@
+column,type
+Unnamed: 0,numeric
+game,numeric
+white_king_col,categorical
+white_king_row,numeric
+white_rook_col,categorical
+white_rook_row,numeric
+black_king_col,categorical
+black_king_row,numeric

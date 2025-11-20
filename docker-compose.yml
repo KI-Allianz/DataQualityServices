@@ -1,0 +1,63 @@
+#Its a docker-compose.xml file
+#Not recommended to use
+# #version: "3.9"
+# services:
+#   ai-services:
+#     container_name: ai-services
+#     build: .
+#     image: ai-services:prod
+#     ports:
+#       - "8000:8000"
+#     env_file: .env
+#     volumes:
+#       - ./artifacts:/app/artifacts:ro
+#       - ./output:/app/output
+#     #restart: unless-stopped
+#     healthcheck:
+#       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/health"]
+#       interval: 30s
+#       timeout: 5s
+#       retries: 3
+#     restart: unless-stopped
+
+#Its for local build
+services:
+  ai-services:
+    build: .
+    image: ai-services:prod
+    #image: ai-services:1.0.0   # Pin version
+    container_name: ai-services
+    ports: ["8000:8000"]
+    env_file: .env
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+#Its for production build
+
+# services:
+#   ai-services:
+#     image: optimus-repo.hlrs.de/repository/kiallianz/ai/ai-services:1.0.0
+#     container_name: ai-services
+#     env_file: .env.prod
+#     ports: ["8000:8000"]
+#     volumes:
+#       - ./artifacts:/app/artifacts:ro
+#       - ./output:/app/output
+#     restart: unless-stopped
+#     healthcheck:
+#       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/health"]
+#       interval: 30s
+#       timeout: 5s
+#       retries: 3

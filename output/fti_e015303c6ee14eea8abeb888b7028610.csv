@@ -1,0 +1,9 @@
+column,type
+total,numeric
+datetime_utc,datetime
+PV,numeric
+CHP,numeric
+mean_global_irradiance,numeric
+Air_temp,numeric
+Facility_Manager,categorical
+Engine_test_stand,categorical

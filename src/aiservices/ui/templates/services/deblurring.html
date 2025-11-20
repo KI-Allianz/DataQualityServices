@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Image Deblurring{% endblock %}
+
+{% block content %}
+<h1 style="text-align:center;">Image Deblurring</h1>
+
+<style>
+  .wrap { max-width: 900px; margin: 20px auto; }
+  .card { background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:16px; margin-bottom:20px; }
+  .label { font-weight:600; margin-bottom:6px; display:block; }
+  input[type="file"] { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; }
+  button, .btn { background:#000; color:#fff; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; text-decoration:none; display:inline-block; }
+  button:hover, .btn:hover { background:#111; }
+  .muted { color:#666; }
+  .pill { background:#f2f2f2; border-radius:20px; padding:4px 10px; font-size:12px; margin-right:6px; display:inline-block; }
+</style>
+
+<div class="wrap">
+  <div class="card">
+    <h2 style="color:#0000FF; margin-top:0;">Upload Blurred Images (ZIP)</h2>
+    <form action="{{ url_for('deblurring_run') }}" method="post" enctype="multipart/form-data">
+      <label class="label">ZIP file</label>
+      <input type="file" name="images_zip" accept=".zip" required />
+      <p class="muted" style="margin-top:8px;">
+        Supported types inside ZIP:
+        <span class="pill">.png</span>
+        <span class="pill">.jpg</span>
+        <span class="pill">.tif</span>
+        &nbsp;• Formats: Grayscale &amp; RGB • Any resolution • Optical microscopy domain
+      </p>
+      <button type="submit">Run Deblurring</button>
+    </form>
+  </div>
+
+  {% if error %}
+  <div class="card" style="border-left:4px solid #cc0000;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  {% if ready %}
+  <div class="card">
+    <h2 style="color:#0000FF; margin-top:0;">Results</h2>
+    <p class="muted">Processed: <strong>{{ processed or 0 }}</strong> &nbsp;&nbsp;|&nbsp;&nbsp;
+      Skipped: <strong>{{ skipped or 0 }}</strong> &nbsp;&nbsp;|&nbsp;&nbsp;
+      Formats seen: <strong>{{ formats }}</strong>
+    </p>
+    <a class="btn" href="{{ url_for('deblurring_download') }}">Download Restored Images (ZIP)</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

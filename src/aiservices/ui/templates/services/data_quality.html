@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}AI-Allianz Data Quality AI Services{% endblock %}
+
+{% block content %}
+<h1 style="text-align:center;">AI-Allianz Data Quality AI Services</h1>
+
+<style>
+  .wrap{max-width:1100px;margin:20px auto}
+  .card{background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:18px;margin-bottom:16px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .label{font-weight:600;margin:6px 0}
+  input,select,textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px}
+  .btn{background:#111;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer}
+  .btn:hover{background:#000}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:#f1f3f5;padding:6px 12px;border-radius:999px;margin-right:8px;color:#334155}
+  .pill.active{background:#111;color:#fff}
+  .muted{color:#666}
+  .error{background:#ffe6e6;border-left:4px solid #d33;padding:10px;border-radius:6px}
+  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin:10px 0}
+  .table{width:100%}
+  .section-title{margin:18px 0 8px 0}
+</style>
+
+<div class="wrap">
+
+  {% if error %}<div class="error"><strong>Error:</strong> {{ error }}</div>{% endif %}
+
+  <!-- Progress + Wizard Controls -->
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <span class="pill {% if step == 0 %}active{% endif %}">1 · Upload</span>
+      <span class="pill {% if step == 1 %}active{% endif %}">2 · Options</span>
+      <span class="pill {% if step == 2 %}active{% endif %}">3 · Results</span>
+    </div>
+    <div class="toolbar">
+      <form method="post" action="{{ url_for('ui.data_quality_back') }}">
+        <button class="btn" {% if step == 0 %}disabled{% endif %}>← Back</button>
+      </form>
+      <form method="post" action="{{ url_for('ui.data_quality_next') }}">
+        <button class="btn" {% if step == 2 %}disabled{% endif %}>Next →</button>
+      </form>
+      <form method="post" action="{{ url_for('ui.data_quality_reset') }}">
+        <button class="btn">Start New Upload</button>
+      </form>
+    </div>
+  </div>
+
+  {# ---------------- Step 0: Upload ---------------- #}
+  {% if step == 0 %}
+  <div class="card">
+    <h2 class="section-title">Upload Data</h2>
+    <p class="muted">Upload a CSV/XLSX table. We’ll infer feature types, impute missing values, detect anomalies, and show a personalized summary for a chosen target.</p>
+    <form action="{{ url_for('ui.data_quality_upload') }}" method="post" enctype="multipart/form-data">
+      <label class="label">Dataset file</label>
+      <input type="file" name="data_file" accept=".csv,.xlsx,.xls" required>
+      <div style="margin-top:12px">
+        <button class="btn">Upload</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ---------------- Step 1: Options / Preview ---------------- #}
+  {% if step == 1 %}
+  <div class="card">
+    <h2 class="section-title">Preview & Options</h2>
+    {% if df_preview %}
+      <div style="overflow:auto; max-height:320px; border:1px solid #eef1f5; border-radius:8px; padding:6px">{{ df_preview|safe }}</div>
+    {% endif %}
+
+    <form action="{{ url_for('ui.data_quality_run') }}" method="post" style="margin-top:16px">
+      <div class="row">
+        <div>
+          <label class="label">Select the target variable (optional)</label>
+          <select name="target_col">
+            <option value="">-- none --</option>
+            {% for c in columns %}
+              <option value="{{ c }}"
+                {% if target and target==c %}selected{% endif %}>
+                {{ c }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label">Imputation strategy</label>
+          <select name="strategy">
+            <option value="mean">Mean (numeric)</option>
+            <option value="median">Median (numeric)</option>
+            <option value="most_frequent">Most frequent</option>
+            <option value="constant">Constant (0 / empty)</option>
+          </select>
+          <p class="muted" style="margin:6px 0 0">Used only for the “Imputation” step.</p>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn">Process</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ---------------- Step 2: Results ---------------- #}
+  {% if step == 2 %}
+  <div class="card">
+    <h2 class="section-title">Results</h2>
+
+    <h3 class="section-title">1) Feature Type Inference</h3>
+    {% if fti_err %}<div class="error">{{ fti_err }}</div>{% endif %}
+    {% if fti_preview %}
+      <div style="overflow:auto;max-height:300px;border:1px solid #eef1f5;border-radius:8px;padding:6px">{{ fti_preview|safe }}</div>
+      <p style="margin-top:8px">
+        <a class="btn" href="{{ url_for('ui.data_quality_download', kind='fti', fmt='csv') }}">Download CSV</a>
+        <a class="btn" href="{{ url_for('ui.data_quality_download', kind='fti', fmt='xlsx') }}">Download XLSX</a>
+      </p>
+    {% else %}
+      <p class="muted">No FTI output.</p>
+    {% endif %}
+
+    <h3 class="section-title">2) Imputation</h3>
+    {% if imp_err %}<div class="error">{{ imp_err }}</div>{% endif %}
+    {% if imp_preview %}
+      <div style="overflow:auto;max-height:300px;border:1px solid #eef1f5;border-radius:8px;padding:6px">{{ imp_preview|safe }}</div>
+      {% if imp_info %}
+        <p class="muted" style="margin-top:6px">Imputation info:</p>
+        <ul class="muted">
+          {% for line in imp_info %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+      <p style="margin-top:8px">
+        <a class="btn" href="{{ url_for('ui.data_quality_download', kind='imputed', fmt='csv') }}">Download CSV</a>
+        <a class="btn" href="{{ url_for('ui.data_quality_download', kind='imputed', fmt='xlsx') }}">Download XLSX</a>
+      </p>
+    {% else %}
+      <p class="muted">No imputed output.</p>
+    {% endif %}
+
+    <h3 class="section-title">3) Anomaly Detection</h3>
+    {% if anom_err %}<div class="error">{{ anom_err }}</div>{% endif %}
+    {% if anom_preview %}
+      {% if anom_threshold %}<p class="muted">{{ anom_threshold }}</p>{% endif %}
+      <div style="overflow:auto;max-height:300px;border:1px solid #eef1f5;border-radius:8px;padding:6px">{{ anom_preview|safe }}</div>
+      <p style="margin-top:8px">
+        <a class="btn" href="{{ url_for('ui.data_quality_download', kind='anomaly', fmt='csv') }}">Download CSV</a>
+        <a class="btn" href="{{ url_for('ui.data_quality_download', kind='anomaly', fmt='xlsx') }}">Download XLSX</a>
+      </p>
+    {% else %}
+      <p class="muted">No anomaly output.</p>
+    {% endif %}
+
+    <h3 class="section-title">4) Personalized (Target) Summary</h3>
+    {% if target %}<p class="muted">Target: <strong>{{ target }}</strong></p>{% endif %}
+    {% if pers_msg %}<p class="muted">{{ pers_msg }}</p>{% endif %}
+    {% if pers_preview %}
+      <div style="overflow:auto;max-height:300px;border:1px solid #eef1f5;border-radius:8px;padding:6px">{{ pers_preview|safe }}</div>
+    {% endif %}
+
+    {# Publish status #}
+    {% if publish_info %}
+      <div class="card" style="background:#f6ffed;border:1px solid #b7eb8f;padding:12px;border-radius:6px;margin-top:12px">
+        <strong>Published ✅</strong>
+        {% if publish_info.artifact_url %}
+          <div>Artifact: <a href="{{ publish_info.artifact_url }}" target="_blank" rel="noopener">download link</a></div>
+        {% endif %}
+        {% if publish_info.dataset_id %}
+          <div>Dataset ID / Location: {{ publish_info.dataset_id }}</div>
+        {% endif %}
+      </div>
+    {% if publish_err %}
+      <div class="error">Publish failed: {{ publish_err }}</div>
+    {% elif publish_info %}
+      <div class="card">
+        <p><strong>Published!</strong></p>
+        <p>Temporary download (MinIO): <a href="{{ publish_info.minio_url }}" target="_blank">open</a></p>
+      </div>
+    {% endif %}
+    <!-- {% elif publish_err %}
+      <div class="card" style="background:#fff1f0;border:1px solid #ffa39e;padding:12px;border-radius:6px;margin-top:12px">
+        <strong>Publish failed:</strong> {{ publish_err }}
+      </div>
+    {% endif %} -->
+  </div>
+
+  <!-- Bottom toolbar repeated for convenience -->
+  <div class="card" style="display:flex;justify-content:flex-end">
+    <div class="toolbar">
+      <form method="post" action="{{ url_for('ui.data_quality_back') }}">
+        <button class="btn" {% if step == 0 %}disabled{% endif %}>← Back</button>
+      </form>
+      <form method="post" action="{{ url_for('ui.data_quality_next') }}">
+        <button class="btn" {% if step == 2 %}disabled{% endif %}>Next →</button>
+      </form>
+      <form method="post" action="{{ url_for('ui.data_quality_reset') }}">
+        <button class="btn">Start New Upload</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

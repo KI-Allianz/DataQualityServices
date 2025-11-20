@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Tabular Outlier Detection (XGBOD){% endblock %}
+{% block content %}
+<h1 style="text-align:center;">AI Alliance – Tabular Outlier Detection using Extreme Boosting Based Outlier Detection (XGBOD)</h1>
+
+<style>
+  .wrap{max-width:1000px;margin:20px auto}
+  .card{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+  .ok{background:#e9f7ef;border-left:4px solid #28a745;padding:10px;border-radius:6px;margin-bottom:8px}
+  .warn{background:#fff3cd;border-left:4px solid #ffc107;padding:10px;border-radius:6px;margin-bottom:8px}
+  .err{background:#fdecea;border-left:4px solid #c0392b;padding:10px;border-radius:6px;margin-bottom:8px}
+  label{font-weight:600;display:block;margin-top:8px}
+  input,select{width:100%;padding:8px;border:1px solid #ddd;border-radius:6px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn{background:#000;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;margin-top:12px}
+  .btn:hover{background:#111}
+</style>
+
+<div class="wrap">
+
+  {% if artifacts.messages %}
+    <div class="card">
+      {% for m in artifacts.messages %}
+        <div class="ok">{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if error %}
+    <div class="err"><strong>Error:</strong> {{ error }}</div>
+  {% endif %}
+  {% if info_msgs %}
+    <div class="card">
+      {% for m in info_msgs %}
+        <div class="warn">{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if step == "upload" %}
+    <div class="card">
+      <h2>Upload your data</h2>
+      <p>Artifacts status — Model: <b>{{ 'loaded' if artifacts.model else 'missing' }}</b>,
+         Scaler: <b>{{ 'loaded' if artifacts.scaler else 'missing' }}</b>,
+         Threshold: <b>{{ artifacts.threshold if artifacts.threshold is not none else 'missing' }}</b>,
+         Features: <b>{{ artifacts.features|length if artifacts.features else 'missing' }}</b></p>
+
+      {% if not ready %}
+        <div class="err">Model artifacts are missing. Put them in <code>./artifacts</code> or set <code>XGBOD_ARTIFACTS_DIR</code>.</div>
+      {% endif %}
+
+      <form action="{{ url_for('ui.outlier_process') }}" method="post" enctype="multipart/form-data">
+        <label>Data file (.csv / .xlsx)</label>
+        <input type="file" name="data_file" accept=".csv,.xlsx,.xls" required>
+
+        <div class="row">
+          <div>
+            <label>Excel sheet name (optional)</label>
+            <input type="text" name="sheet_name" placeholder="e.g. Tabelle1">
+          </div>
+          <div>
+            <label>Fill value for missing/NaN features</label>
+            <input type="number" step="any" name="fill_value" value="0">
+          </div>
+        </div>
+
+        <label><input type="checkbox" name="strict_schema"> Strict schema (error if features missing/non-numeric)</label>
+        <label><input type="checkbox" name="coerce_numeric" checked> Coerce non-numeric to numeric (NaN → fill)</label>
+        <label><input type="checkbox" name="include_score"> Also include raw outlier score column (od_score)</label>
+
+        <button class="btn" {% if not ready %}disabled{% endif %}>Process</button>
+      </form>
+    </div>
+  {% endif %}
+
+  {% if step == "results" %}
+    <div class="card">
+      <h2>Outlier Detection Results</h2>
+      <p>Threshold used: <b>{{ thr }}</b> | Higher score ⇒ outlier</p>
+      <p>Rows: <b>{{ rows }}</b> | Outliers detected: <b>{{ n_out }}</b></p>
+      <div style="overflow:auto; max-height:500px;">{{ preview_html|safe }}</div>
+
+      <h3>Download results</h3>
+      <a class="btn" href="{{ url_for('ui.outlier_download', what='results.xlsx') }}">Download results.xlsx</a>
+      <a class="btn" href="{{ url_for('ui.outlier_download', what='results.csv') }}">Download results.csv</a>
+
+      <h3 style="margin-top:16px;">Filtered downloads</h3>
+      <div class="row">
+        <div>
+          <p>Without outliers</p>
+          <a class="btn" href="{{ url_for('ui.outlier_download', what='inliers.csv') }}">Download inliers.csv</a>
+          <a class="btn" href="{{ url_for('ui.outlier_download', what='inliers.xlsx') }}">Download inliers.xlsx</a>
+        </div>
+        <div>
+          <p>Only outliers</p>
+          <a class="btn" href="{{ url_for('ui.outlier_download', what='outliers.csv') }}">Download outliers.csv</a>
+          <a class="btn" href="{{ url_for('ui.outlier_download', what='outliers.xlsx') }}">Download outliers.xlsx</a>
+        </div>
+      </div>
+      <p style="margin-top:12px;"><a class="btn" href="{{ url_for('ui.outlier_page') }}">Back to Start</a></p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

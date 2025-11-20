@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Piveau AI Services{% endblock %}
+
+{% block content %}
+<h1 style="text-align:center;">Welcome to the AI Services Platform</h1>
+
+<style>
+  .ai-services-container{display:flex;flex-direction:column;align-items:flex-start;margin-top:20px;margin-left:50px;width:calc(95% - 50px)}
+  /*.service-card{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding:16px;border-radius:12px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.06);width:95%;max-width:95%;border:1px solid #eef1f5}*/
+  .service-card{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin:22px 0;padding:16px 18px;border-radius:12px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.06);width:100%;max-width:100%;border:1px solid #eef1f5;text-align:left;}            
+  .service-card h2{text-align:left !important;margin:0 0 8px;}
+  .service-content{flex:1}
+  .service-content h2{color:#0000FF;margin:0 0 6px}
+  .service-content p{margin:0 0 10px;color:#4b5563}
+  .btn-black{display:inline-block;padding:10px 18px;background:#000;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;cursor:pointer;margin-top:12px}
+  .btn-black:hover{background:#111}
+
+  /* IO strip */
+  .dq-iobar{display:grid;grid-template-columns:1fr 1fr;background:#001aff;color:#fff;border-top-left-radius:8px;border-top-right-radius:8px;overflow:hidden;margin-top:8px}
+  .dq-iobar div{padding:8px 10px;font-weight:600}
+  .dq-iofoot{display:grid;grid-template-columns:1fr 1fr;background:#f8fafc;border:1px solid #e9eef6;border-top:0;border-bottom-left-radius:8px;border-bottom-right-radius:8px}
+  .dq-iofoot div{padding:8px 10px}
+  .dq-iofoot div + div{border-left:1px solid #e9eef6}
+
+  /* Panels */
+  .panel-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+  .dq-panel{background:#f9fafc;border:1px solid #edf1f6;border-radius:10px;padding:10px}
+  .dq-panel-title{font-weight:700;color:#0f172a;margin-bottom:6px}
+  .dq-panel ul{margin:0;padding-left:18px}
+  .dq-panel li{margin:3px 0}
+
+  /* Image */
+  .service-img{flex:0 0 240px;margin-left:18px}
+  .service-img img{width:100%;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  @media (max-width:1000px){
+    .service-card{flex-direction:column}
+    .service-img{margin-left:0;margin-top:12px;width:100%;max-width:420px}
+  }
+</style>
+
+<div class="ai-services-container">
+
+  <!-- 1. Data Quality AI Services -->
+  <div class="service-card">
+    <div class="service-content">
+      <h2>Data Quality AI Services</h2>
+      <p>End-to-end helpers for tabular data: impute missing values, find anomalies, and optionally apply custom rules.</p>
+
+      <div class="dq-iobar">
+        <div>Input Data Format</div>
+        <div>Output Data Format</div>
+      </div>
+      <div class="dq-iofoot">
+        <div>CSV, JSON</div>
+        <div>CSV, JSON</div>
+      </div>
+
+      <div class="panel-wrap">
+        <div class="dq-panel">
+          <div class="dq-panel-title">Problem Statement</div>
+          <ul>
+            <li>Raw datasets often contain missing values, inconsistent types, anomalies, or irrelevant features.</li>
+            <li>Such low-quality data leads to unreliable AI models and incorrect insights.</li>
+          </ul>
+        </div>
+        <div class="dq-panel">
+          <div class="dq-panel-title">Expected Results</div>
+          <ul>
+            <li>Cleaned and standardized dataset ready for training or analytics.</li>
+            <li>Feature Type Inference → Detects and assigns correct types (numeric, categorical, datetime).</li>
+            <li>Data Imputation → Fills missing values (mean, mode, or ML-based).</li>
+            <li>Anomaly Detection → Flags unusual or inconsistent rows.</li>
+            <li>Personalized Data Detection → Custom checks based on user’s rules.</li>
+          </ul>
+        </div>
+      </div>
+
+      <a class="btn-black" href="{{ url_for('ui.data_quality_page') }}">Get Started</a>
+    </div>
+    <div class="service-img">
+      <img src="{{ url_for('ui.static', filename='images/data_quality_sample.png') }}" alt="Data Quality">
+    </div>
+  </div>
+
+  <!-- 2. Outlier Detection -->
+  <div class="service-card">
+    <div class="service-content">
+      <h2>Outlier Detection (Tabular)</h2>
+      <p>Flags anomalous rows using XGBOD; download full results and filtered inliers/outliers.</p>
+
+      <div class="dq-iobar"><div>Input Data Format</div><div>Output Data Format</div></div>
+      <div class="dq-iofoot"><div>Excel, CSV</div><div>Excel/CSV</div></div>
+
+      <div class="panel-wrap">
+        <div class="dq-panel">
+          <div class="dq-panel-title">Problem Statement</div>
+          <ul>
+            <li>Tabular datasets often contain anomalous rows or values caused by sensor errors, manual entry mistakes, or rare events.</li>
+            <li>Such outliers can skew statistical analysis and reduce AI model accuracy, making predictions unreliable.</li>
+            <li>Detecting anomalies manually in large datasets is time-consuming and error-prone.</li>
+          </ul>
+        </div>
+        <div class="dq-panel">
+          <div class="dq-panel-title">Expected Results</div>
+          <ul>
+            <li>A processed dataset where each row is flagged as normal or anomalous.</li>
+            <li>Optionally, an outlier score column quantifying how unusual each row is.</li>
+            <li>Full dataset with anomaly flags (output_with_flags.csv / .xlsx)</li>
+            <li>One-click downloads: results, inliers, outliers.</li>
+            <li>Ready-to-use results for data cleaning, model retraining, or reporting.</li>
+          </ul>
+        </div>
+      </div>
+
+      <a class="btn-black" href="{{ url_for('ui.outlier_page') }}">Get Started</a>
+    </div>
+    <div class="service-img">
+      <img src="{{ url_for('ui.static', filename='images/outlier_detection.png') }}" alt="Outlier Detection">
+    </div>
+  </div>
+
+  <!-- 3. Efficient Labelling (stubbed) -->
+  <div class="service-card">
+    <div class="service-content">
+      <h2>Efficient Labelling (Image Data)</h2>
+      <p>Few-shot FEAT pipeline to auto-label query images from a small, curated support set.</p>
+
+      <div class="dq-iobar"><div>Input Data Format</div><div>Output Data Format</div></div>
+      <div class="dq-iofoot"><div>ZIP with <code>support/</code> & <code>query/</code></div><div>ZIP with labelled folders + CSV</div></div>
+
+      <div class="panel-wrap">
+        <div class="dq-panel">
+          <div class="dq-panel-title">Problem Statement</div>
+          <ul>
+            <li>Large image datasets are often unlabeled or partially labeled, making them unusable for supervised ML workflows.</li>
+            <li>Manual labeling is slow, inconsistent, and costly, especially with domain-specific data.</li>
+            <li>Inconsistent labeling across annotators leads to poor model generalization.</li>
+          </ul>
+        </div>
+        <div class="dq-panel">
+          <div class="dq-panel-title">Expected Results</div>
+          <ul>
+            <li>Images are automatically labeled (or semi-labeled) with predicted classes and confidence scores.</li>
+            <li>Option to review, correct, and export a cleaned labeled dataset.</li>
+            <li>Labeled dataset in the same structure (ZIP of images with labels).</li>
+            <li>CSV/JSON file mapping filenames → predicted labels + confidence.</li>
+            <li>Accelerated data preparation, saving time and cost in training pipelines.</li>
+          </ul>
+        </div>
+      </div>
+      <a class="btn-black btn-disabled" href="#" aria-disabled="true">Coming soon</a>
+    </div>
+    <div class="service-img">
+      <img src="{{ url_for('ui.static', filename='images/efficient_labelling.png') }}" alt="Efficient Labelling">
+    </div>
+  </div>
+
+  <!-- 4. Image Deblurring -->
+  <div class="service-card">
+    <div class="service-content">
+      <h2>Image Deblurring</h2>
+      <p>Restores blurred images while preserving resolution, format, and EXIF metadata.</p>
+
+      <div class="dq-iobar"><div>Input Data Format</div><div>Output Data Format</div></div>
+      <div class="dq-iofoot">
+        <div>ZIP (.png, .jpg, .tif) : any resolution</div>
+        <div>ZIP (restored images): metadata retained</div>
+      </div>
+
+      <div class="panel-wrap">
+        <div class="dq-panel">
+          <div class="dq-panel-title">Problem Statement</div>
+          <ul>
+            <li>Surveillance, medical, and industrial images often suffer from motion blur, defocus, or low-light noise.</li>
+            <li>Blurred images lose vital details like edges, text, and textures, reducing usefulness.</li>
+            <li>Poor image clarity hampers both human recognition and machine learning accuracy.</li>
+            <li>Manual corrections are slow, inconsistent, and often degrade quality.</li>
+          </ul>
+        </div>
+        <div class="dq-panel">
+          <div class="dq-panel-title">Expected Results</div>
+          <ul>
+            <li>AI-based automated restoration of blurred images.</li>
+            <li>Output as sharp, high-resolution images with original metadata preserved</li>
+            <li>Clearer details for better visual quality and AI model accuracy.</li>
+            <li>Batch upload and download of restored images in ZIP format.</li>
+            <li>Supports multiple image formats (.jpg, .png, .tif), grayscale or RGB.</li>
+          </ul>
+        </div>
+      </div>
+      <a class="btn-black btn-disabled" href="#" aria-disabled="true">Coming soon</a>
+    </div>
+    <div class="service-img">
+      <img src="{{ url_for('ui.static', filename='images/image_deblurring.png') }}" alt="Image Deblurring">
+    </div>
+  </div>
+
+</div>
+{% endblock %}
