@@ -2,6 +2,7 @@
 
 A modular, UI-based AI inference platform for **Data Quality Analysis**, **Outlier Detection**, **Efficient Lebelling(Coming soon)** and **Image Deblurring(Coming soon)** built for deployment in **HLRS infrastructure** environment, developed by Aalen University and fundated by KI-Allianz.
 
+https://ki-daten.hlrs.de/data-quality
 ---
 <img width="1881" height="862" alt="image" src="https://github.com/user-attachments/assets/f9e72b0a-b67b-460c-a743-8e0115b06f77" />
 
