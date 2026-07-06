@@ -515,10 +515,10 @@ def upload_data_beginning():
             "llm_input.json",
         )
 
-        with open(serialized_path, "w", encoding="utf-8") as file:
+        with open(serialized_path, "w", encoding="utf-8") as serialized_file:
             json.dump(
                 serialized_data,
-                file,
+                serialized_file,
                 ensure_ascii=False,
                 default=str,
             )
@@ -1190,7 +1190,7 @@ def download_zip():
     # Standardname für ZIP setzen
     if not zip_name:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zip_name = f"metadata_bundle_{ts}.zip"
+        zip_name = f"DCAT-AP_bundle_services_{ts}.zip"
 
     #".zip" anhängen
     if not zip_name.lower().endswith(".zip"):

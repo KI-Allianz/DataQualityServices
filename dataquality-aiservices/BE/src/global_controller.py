@@ -152,7 +152,8 @@ def load_and_preprocess_data(data_anomalie_df,feature_type_inference):
     data_anomalie_df = data_anomalie_df.copy()
 
     if feature_type_inference is not None and not feature_type_inference.empty:
-        datetime_rows = feature_type_inference[feature_type_inference['prediction'] == "datetime"]
+        prediction_series = feature_type_inference["prediction"].astype(str).str.strip().str.lower()
+        datetime_rows = feature_type_inference[prediction_series == "datetime"]
         datetime_cols = [
             col for col in datetime_rows["Attribute_name"].astype(str).tolist()
             if col in data_anomalie_df.columns
@@ -339,6 +340,17 @@ def one_hot_encode_columns(
         Transformed DataFrame.
     """
     df_out = df.copy()
+    feature_inference_df = feature_inference_df.copy()
+
+    if "prediction" not in feature_inference_df.columns:
+        raise ValueError("`feature_inference_df` is missing required column: prediction")
+
+    feature_inference_df["prediction"] = (
+        feature_inference_df["prediction"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
 
     # --- Validate / stash the target for protection ---
     target_series = None
@@ -669,7 +681,7 @@ def check_time_series(df: pd.DataFrame,feature_df:pd.DataFrame) -> str:
     Returns:
         str: 'Time series' if a datetime column is found, else 'No time series'.
     """
-    if feature_df['prediction'].str.contains('datetime').any():
+    if feature_df["prediction"].astype(str).str.strip().str.lower().str.contains("datetime").any():
             
             return "Time series"
     else:

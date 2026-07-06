@@ -247,11 +247,23 @@ def ask_model_mes(messages, pipe=None, max_new_tokens=10000):
     if pipe is None:
         return "Model was not loaded! Use load_model() before running this function."
 
-    # Invoke the model with chat messages; pass generation length
-    outputs = pipe(messages, max_new_tokens=max_new_tokens)
+    # Invoke the model with deterministic generation for structured outputs.
+    outputs = pipe(
+        messages,
+        max_new_tokens=max_new_tokens,
+        do_sample=False,
+        temperature=1.0,
+        return_full_text=False,
+    )
 
     # Extract the last generated message's content from the pipeline output
-    response = outputs[0]["generated_text"][-1]['content']
+    generated_text = outputs[0]["generated_text"]
+    if isinstance(generated_text, list):
+        response = generated_text[-1]["content"]
+    elif isinstance(generated_text, dict):
+        response = generated_text.get("content", "")
+    else:
+        response = generated_text
     return response
 
 

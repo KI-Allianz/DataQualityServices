@@ -31,6 +31,49 @@ LABEL_PATTERNS = [
     ("Not-Generalizable",  r'(?<!\w)Not-?Genera\w*(?!\w)'),          # "Not-Genera...", "Not-Generalizable"
     ("Context-Specific",   r'(?<!\w)Context-?S\w*(?!\w)'),           # "Context-Spec...", "ContextSpecific"
 ]
+
+
+def _parse_llm_json_object(response: str) -> Dict[str, Any]:
+    """
+    Parse the first JSON object from an LLM response.
+
+    Qwen3 can prepend hidden-reasoning style text such as "<think>...</think>"
+    even when prompted for JSON. This keeps the upload path tolerant while still
+    requiring a valid JSON object somewhere in the answer.
+    """
+    if not response:
+        raise ValueError("LLM returned an empty response")
+
+    cleaned = re.sub(
+        r"<think>.*?</think>",
+        "",
+        response,
+        flags=re.IGNORECASE | re.DOTALL,
+    ).strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        decoder = json.JSONDecoder()
+        for match in re.finditer(r"\{", cleaned):
+            try:
+                parsed, _ = decoder.raw_decode(cleaned[match.start():])
+                break
+            except json.JSONDecodeError:
+                continue
+        else:
+            raise ValueError(
+                f"LLM returned invalid JSON: {response}"
+            )
+
+    if not isinstance(parsed, dict):
+        raise ValueError(
+            f"LLM JSON response must be an object, got {type(parsed).__name__}: {response}"
+        )
+
+    return parsed
+
+
 # Function to extract the first matching label from text
 def extract_response(text: str):
     """
@@ -276,9 +319,11 @@ For every column, return:
 
 Return ONLY valid JSON.
 Do not add markdown or explanations.
+Do not include thinking text. Do not include <think> tags.
 """
 
         user_message = (
+            "/no_think\n"
             "Classify every column in this dataset summary:\n"
             + json.dumps(column_summary, ensure_ascii=False)
             + "\n\nReturn JSON in exactly this format:\n"
@@ -309,12 +354,7 @@ Do not add markdown or explanations.
             max_new_tokens=max(256, len(batch_columns) * 24),
         )
 
-        try:
-            parsed = json.loads(response.strip())
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"LLM returned invalid JSON: {response}"
-            ) from exc
+        parsed = _parse_llm_json_object(response)
 
         for col in batch_columns:
             col_name = str(col)
@@ -324,6 +364,7 @@ Do not add markdown or explanations.
                 "feature_type",
                 "Context-Specific",
             )
+            feature_type = str(feature_type).strip().lower()
 
             is_personal = bool(
                 prediction.get("personal", False)

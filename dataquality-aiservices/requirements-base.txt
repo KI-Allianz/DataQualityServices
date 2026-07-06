@@ -245,7 +245,10 @@ zstandard==0.23.0
 
 
 
-# CPU-compatible packages for local Mac development
-torch==2.3.0
+# CUDA-compatible PyTorch and DGL stack
+--extra-index-url https://download.pytorch.org/whl/cu121
+--find-links https://data.dgl.ai/wheels/torch-2.3/cu121/repo.html
+
+torch==2.3.0+cu121
 torchdata==0.8.0
-dgl==2.1.0
+dgl==2.3.0+cu121

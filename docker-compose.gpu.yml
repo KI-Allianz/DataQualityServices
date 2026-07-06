@@ -2,7 +2,10 @@ services:
   backend:
     # GPU override for the included dataquality backend service.
     # Requires NVIDIA Container Toolkit on the Linux host.
-    gpus: all
+    gpus:
+      - driver: nvidia
+        count: all
+        capabilities: [gpu]
     environment:
       NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
       NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}

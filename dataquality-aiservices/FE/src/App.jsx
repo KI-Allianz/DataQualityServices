@@ -44,7 +44,7 @@ function App() {
     }, {})
   );
 
-  const [zipFilename, setZipFilename] = useState("metadata_bundle.zip");
+  const [zipFilename, setZipFilename] = useState("DCAT-AP_bundle_services.zip");
   const allSelected = downloadItems.every((it) => !!downloadSelections[it.key]);
 
   const handleSelectAllDownloads = () => {
@@ -68,7 +68,7 @@ function App() {
         return;
       }
 
-      const cleanZipName = (zipFilename || "").trim() || "metadata_bundle.zip";
+      const cleanZipName = (zipFilename || "").trim() || "DCAT-AP_bundle_services.zip";
 
       if (selectedOperation === "model") {
         setJsonResponse(null);
@@ -517,6 +517,8 @@ function App() {
     return isMissingValue(originalValue) && !isMissingValue(imputedValue);
   };
 
+  const cleanedPreviewTable = jsonResponse?.final ?? jsonResponse?.processed;
+
   return (
     <div className="app-container">
       <div className="navbar">
@@ -725,7 +727,7 @@ function App() {
                     )}
 
                     <div className="downloads-section">
-                      <div className="downloads-section-title">Select services to include</div>
+                      <div className="downloads-section-title">Select services for upload to the KI-Allianz Data Platform.</div>
                       <div className="downloads-items">
                         {downloadItems.map((item) => (
                           <label key={item.key} className="downloads-item">
@@ -2010,23 +2012,22 @@ function App() {
 
         {selectedOperation === 'cleaned' && jsonResponse && (
           <div className="summary-plot-section">
-            {/* Original Tabelle */}
-            {Array.isArray(jsonResponse.original?.data) && jsonResponse.original.data.length > 0 && (
+            {Array.isArray(cleanedPreviewTable?.data) && cleanedPreviewTable.data.length > 0 && (
               <div className="table-wrapper2">
-                <h3 className="plot-title">Original Table</h3>
+                <h3 className="plot-title">Processed Table</h3>
                 <div className="table-container2">
                   <table className="csv-table2">
                     <thead>
                       <tr>
-                        {jsonResponse.original.columns.map((col, idx) => (
+                        {cleanedPreviewTable.columns.map((col, idx) => (
                           <th key={idx}>{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {jsonResponse.original.data.slice(0, 10).map((row, rowIdx) => (
+                      {cleanedPreviewTable.data.slice(0, 10).map((row, rowIdx) => (
                         <tr key={rowIdx}>
-                          {jsonResponse.original.columns.map((col, colIdx) => (
+                          {cleanedPreviewTable.columns.map((col, colIdx) => (
                             <td key={colIdx}>{row[col]}</td>
                           ))}
                         </tr>
@@ -2036,33 +2037,6 @@ function App() {
                 </div>
               </div>
             )}
-
-            {/* Final Tabelle - COMMENTED OUT */}
-            {/* Array.isArray(jsonResponse.final?.data) && jsonResponse.final.data.length > 0 && (
-              <div className="table-wrapper" style={{ marginTop: '2rem' }}>
-                <h3 className="plot-title">Final Table (One-Hot Encoded)</h3>
-                <div className="table-container2">
-                  <table className="csv-table2">
-                    <thead>
-                      <tr>
-                        {jsonResponse.final.columns.map((col, idx) => (
-                          <th key={idx}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {jsonResponse.final.data.slice(0, 10).map((row, rowIdx) => (
-                        <tr key={rowIdx}>
-                          {jsonResponse.final.columns.map((col, colIdx) => (
-                            <td key={colIdx}>{row[col]}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) */}
           </div>
         )}
 
@@ -2159,7 +2133,7 @@ function App() {
 
       <div className="footer">
         <img src="/Hochschule-aalen.svg.png" alt="Hochschule Aalen" className="footer-logo" />
-        <img src="/bw_logo.png" alt="BW Ministerium" className="footer-logo" />
+        <img src="/logo-m-wm_de.svg" alt="Ministerium für Wissenschaft, Forschung und Kunst Baden-Württemberg" className="footer-logo" />
         <div className="content">
           <p>{t('title')}</p>
         </div>

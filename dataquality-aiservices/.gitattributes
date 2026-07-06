@@ -2,3 +2,6 @@
 * text=auto
 *.pkl filter=lfs diff=lfs merge=lfs -text
 *.pt filter=lfs diff=lfs merge=lfs -text
+
+BE/src/services_featuretype_personal/dictionaryName.pkl -filter -diff -merge -text
+BE/src/services_featuretype_personal/dictionarySample.pkl -filter -diff -merge -text
