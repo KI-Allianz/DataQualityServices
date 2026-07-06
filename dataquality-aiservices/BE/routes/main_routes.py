@@ -43,12 +43,27 @@ from pathlib import Path
 
 MAX_COLUMNS_PER_LLM_CALL = 20
 MAX_SAMPLES_PER_COLUMN = 6
+MAX_UPLOAD_ROWS = int(os.environ.get("DATAQUALITY_MAX_UPLOAD_ROWS", "50000"))
+MAX_UPLOAD_COLUMNS = int(os.environ.get("DATAQUALITY_MAX_UPLOAD_COLUMNS", "500"))
 bp = Blueprint('main', __name__)
 logger = logging.getLogger(__name__)
+DANGEROUS_SPREADSHEET_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 class SecurityValidationError(ValueError):
     """Raised only when the upload security validator rejects a file."""
+
+
+def neutralize_spreadsheet_formula(value):
+    if isinstance(value, str) and value.startswith(DANGEROUS_SPREADSHEET_PREFIXES):
+        return "'" + value
+    return value
+
+
+def sanitize_for_spreadsheet_export(df: pd.DataFrame) -> pd.DataFrame:
+    if hasattr(df, "map"):
+        return df.map(neutralize_spreadsheet_formula)
+    return df.applymap(neutralize_spreadsheet_formula)
 
 
 #wandelt DataFrame in Dictionary um
@@ -260,7 +275,11 @@ def _load_file_by_format(file) -> tuple[pd.DataFrame, str]:
                 print(f"    - {warning}")
         
         # Try loading with universal handler (now with proper extension)
-        df = load_dataset_into_dataframe(temp_path, max_rows=None)
+        df = load_dataset_into_dataframe(
+            temp_path,
+            max_rows=MAX_UPLOAD_ROWS,
+            max_columns=MAX_UPLOAD_COLUMNS,
+        )
         
         # Check for spreadsheet formula-injection patterns, but keep the
         # original values for analysis. Rewriting uploaded data here can change
@@ -717,7 +736,7 @@ def show_meta_data():
         demo_meta = pd.DataFrame.from_dict(demo_meta, orient="index")
 
     final_df = gc.metadata_to_dataframe(metadata.where(pd.notnull(metadata), None))
-    final_df.to_csv(
+    sanitize_for_spreadsheet_export(final_df).to_csv(
     get_session_file_path("exports", "m_test.csv"),
     index=False,
 )
@@ -844,12 +863,12 @@ def show_clean_data():
         target,
     )
     
-    original_df.to_csv(
+    sanitize_for_spreadsheet_export(original_df).to_csv(
         get_session_file_path("exports", "original_df.csv"),
         index=False,
     )
 
-    final_df.to_csv(
+    sanitize_for_spreadsheet_export(final_df).to_csv(
         get_session_file_path("exports", "final_df.csv"),
         index=False,
     )
@@ -887,7 +906,7 @@ def _write_table_csv_to_zip(zf, name: str, df):
     if df is None:
         return
 
-    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    csv_bytes = sanitize_for_spreadsheet_export(df).to_csv(index=False).encode("utf-8")
     zf.writestr(name, csv_bytes)
 
 
@@ -1115,7 +1134,7 @@ def model_endpoint():
     automl_artifact = _artifact_path(automl_filename)
 
     try:
-        imputed.to_csv(data_path, index=False)
+        sanitize_for_spreadsheet_export(imputed).to_csv(data_path, index=False)
 
         cmd = [
             "/opt/ag-venv/bin/python",
@@ -1279,7 +1298,7 @@ def download_zip():
             )
 
             #CSV vorbereiten um in ZIP geschrieben zu werden
-            cleaned_csv_bytes = cleaned_df.to_csv(index=False).encode("utf-8")
+            cleaned_csv_bytes = sanitize_for_spreadsheet_export(cleaned_df).to_csv(index=False).encode("utf-8")
 
         except Exception as e:
             return jsonify({"success": False, "error": f"cleaned_data.csv failed: {e}"}), 500

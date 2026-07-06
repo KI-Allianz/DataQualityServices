@@ -1,6 +1,8 @@
 
 # local secrets
 .env
+dataquality-aiservices/BE/Session_Flask/
+Session_Flask/
 
 # python env
 venv/

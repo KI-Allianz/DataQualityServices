@@ -27,7 +27,29 @@ api_bp = Blueprint("api", __name__)
 
 # Hard guardrails
 MAX_RECORDS = int(os.getenv("MAX_RECORDS", "50000"))   # cap rows
+MAX_COLUMNS = int(os.getenv("MAX_COLUMNS", "500"))
+MAX_CELL_CHARS = int(os.getenv("MAX_CELL_CHARS", "10000"))
 REJECT_EMPTY = True
+
+
+def _validate_record_limits(records):
+    if REJECT_EMPTY and len(records) == 0:
+        raise ValueError("'records' must not be empty")
+    if len(records) > MAX_RECORDS:
+        raise ValueError(f"'records' too large: {len(records)} > {MAX_RECORDS}")
+
+    column_names = set()
+    for row in records:
+        if not isinstance(row, dict):
+            raise ValueError("'records' must contain only objects")
+        column_names.update(row.keys())
+        if len(column_names) > MAX_COLUMNS:
+            raise ValueError(f"too many columns: {len(column_names)} > {MAX_COLUMNS}")
+
+        for value in row.values():
+            if isinstance(value, str) and len(value) > MAX_CELL_CHARS:
+                raise ValueError(f"cell value too long: {len(value)} > {MAX_CELL_CHARS}")
+
 
 def _as_df():
     """
@@ -39,12 +61,13 @@ def _as_df():
         raise ValueError("Body must be {'records': [ {...}, ... ]}")
     if not isinstance(body["records"], list):
         raise ValueError("'records' must be a list of objects")
-    return pd.DataFrame(body["records"]), body
-    n = len(body["records"])
-    if REJECT_EMPTY and n == 0:
-        raise ValueError("'records' must not be empty")
-    if n > MAX_RECORDS:
-        raise ValueError(f"'records' too large: {n} > {MAX_RECORDS}")
+
+    _validate_record_limits(body["records"])
+    df = pd.DataFrame(body["records"])
+    if df.shape[1] > MAX_COLUMNS:
+        raise ValueError(f"too many columns: {df.shape[1]} > {MAX_COLUMNS}")
+
+    return df, body
 
 # -----------------------------
 # Data Quality endpoints

@@ -12,11 +12,11 @@ FEATURES_FILES  = ["feature_columns.json", "features.json"]
 
 def _find(cands):
     for n in cands:
-        p = ARTIFACTS_DIR / n
-        if p.exists(): return p
-    for n in cands:
-        p = Path(n)
-        if p.exists(): return p
+        p = (ARTIFACTS_DIR / n).resolve()
+        if ARTIFACTS_DIR not in (p, *p.parents):
+            continue
+        if p.exists() and p.is_file():
+            return p
     return None
 
 def load_artifacts():

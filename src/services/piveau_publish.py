@@ -140,10 +140,15 @@ def register_dataset_in_piveau(dcat_json: dict) -> dict:
     Registers the dataset in Piveau Hub-Repo for the given catalogue.
     Assumes HLRS provided a non-Keycloak auth (e.g., service token or API key).
     """
-    base = os.getenv("PIVEAU_BASE").rstrip("/")
+    base = os.getenv("PIVEAU_BASE")
+    if not base:
+        raise RuntimeError("PIVEAU_BASE must be configured")
+    base = base.rstrip("/")
     catalog = os.getenv("PIVEAU_CATALOG_ID", "dataservices")
     scheme = os.getenv("PIVEAU_AUTH_SCHEME", "Bearer")
-    token = os.getenv("PIVEAU_AUTH_TOKEN", "HuBrePokey")
+    token = os.getenv("PIVEAU_AUTH_TOKEN")
+    if not token:
+        raise RuntimeError("PIVEAU_AUTH_TOKEN must be configured")
 
     # Typical Hub-Repo path is /datasets; catalogue is chosen by header or query param in some setups.
     # HLRS uses 'dataservices' as target catalogue – they may bind it server-side.
@@ -160,7 +165,7 @@ def register_dataset_in_piveau(dcat_json: dict) -> dict:
 
     resp = requests.post(url, headers=headers, data=json.dumps(dcat_json), timeout=30)
     if not resp.ok:
-        raise RuntimeError(f"Piveau registration failed [{resp.status_code}]: {resp.text}")
+        raise RuntimeError(f"Piveau registration failed with status {resp.status_code}")
 
     return {
         "status": resp.status_code,
