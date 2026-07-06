@@ -1,0 +1,2 @@
+dataquality-aiservices/BE/data/models/RandomForest.pkl filter=lfs diff=lfs merge=lfs -text
+dataquality-aiservices/BE/src/best-model.pt filter=lfs diff=lfs merge=lfs -text
