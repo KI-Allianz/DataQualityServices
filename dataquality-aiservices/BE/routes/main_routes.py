@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response, session, send_file
+from flask import Blueprint, request, jsonify, Response, session, send_file, g
 import pandas as pd
 import json
 import math
@@ -8,6 +8,7 @@ import base64
 import random
 import logging
 import time
+import threading
 from services.session_state import (
     save_dataframe_to_session,
     load_dataframe_from_session,
@@ -48,10 +49,18 @@ MAX_UPLOAD_COLUMNS = int(os.environ.get("DATAQUALITY_MAX_UPLOAD_COLUMNS", "500")
 bp = Blueprint('main', __name__)
 logger = logging.getLogger(__name__)
 DANGEROUS_SPREADSHEET_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+LLM_UPLOAD_LOCK = threading.Lock()
 
 
 class SecurityValidationError(ValueError):
     """Raised only when the upload security validator rejects a file."""
+
+
+@bp.teardown_request
+def release_llm_upload_lock(error=None):
+    if getattr(g, "llm_upload_lock_acquired", False) and LLM_UPLOAD_LOCK.locked():
+        LLM_UPLOAD_LOCK.release()
+        g.llm_upload_lock_acquired = False
 
 
 def neutralize_spreadsheet_formula(value):
@@ -358,6 +367,16 @@ def upload_data_beginning():
 
     model_llm = None
     if use_llm_feature_type_inference or use_llm_personal_data_detection:
+        if not LLM_UPLOAD_LOCK.acquire(blocking=False):
+            logger.warning("upload.llm_busy filename=%s", file.filename)
+            return jsonify({
+                "success": False,
+                "error": "Another LLM workflow is already running. Please wait until it finishes and try again.",
+                "retry": True,
+                "retryAfter": 30
+            }), 409
+        g.llm_upload_lock_acquired = True
+
         try:
             logger.info("upload.llm_model.start filename=%s", file.filename)
             model_llm = get_model()  # This will wait for the model with timeout

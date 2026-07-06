@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import './UploadModal.css';
 
@@ -20,6 +20,7 @@ function UploadModal({
   const [localTarget, setLocalTarget] = useState('');
   const [localParsedCSV, setLocalParsedCSV] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (!show) {
@@ -27,10 +28,12 @@ function UploadModal({
       setLocalColumns([]);
       setLocalTarget('');
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   }, [show]);
 
   const handleFileChange = (e) => {
+    if (isSubmittingRef.current) return;
     if (e.target.files.length > 0) {
       const file = e.target.files[0];
       processFile(file);
@@ -39,13 +42,20 @@ function UploadModal({
 
   const handleDrop = (e) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
     if (e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
       processFile(file);
     }
   };
 
+  const handleClose = () => {
+    if (isSubmittingRef.current) return;
+    onClose();
+  };
+
   const processFile = (file) => {
+    if (isSubmittingRef.current) return;
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -70,11 +80,14 @@ function UploadModal({
 
   //Angepasst Test SL
   const handleSubmit = async () => {
+    if (isSubmittingRef.current) return;
+
     if (!selectedFile || !localTarget) {
       alert("Bitte Datei und Zielvariable auswählen.");
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsLoading(true);
     setUploadedFile(selectedFile);
     setColumns(localColumns);
@@ -115,6 +128,7 @@ function UploadModal({
     } catch (error) {
       alert("Beim Hochladen der Datei ist ein Fehler aufgetreten:\n" + error.message);
     } finally {
+      isSubmittingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -125,14 +139,14 @@ function UploadModal({
   if (!show) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div
         className="modal upload-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <h2>{t('uploadTitle')}</h2>
-          <button onClick={onClose} className="close-btn">&times;</button>
+          <button onClick={handleClose} className="close-btn" disabled={isLoading}>&times;</button>
         </div>
 
         <div
@@ -150,6 +164,7 @@ function UploadModal({
             type="file"
             accept=".csv"
             onChange={handleFileChange}
+            disabled={isLoading}
             style={{ display: 'none' }}
           />
         </div>
@@ -174,6 +189,7 @@ function UploadModal({
                 className="select-target"
                 value={localTarget}
                 onChange={(e) => setLocalTarget(e.target.value)}
+                disabled={isLoading}
               >
                 {localColumns.map((col, idx) => (
                   <option key={idx} value={col}>{col}</option>
@@ -190,6 +206,7 @@ function UploadModal({
                   <input
                     type="checkbox"
                     checked={useLLMFeatureInference}
+                    disabled={isLoading}
                     onChange={() => {
                       const newValue = !useLLMFeatureInference;
                       setUseLLMFeatureInference(newValue);
@@ -206,6 +223,7 @@ function UploadModal({
                   <input
                     type="checkbox"
                     checked={useLLMPersonalDataDetection}
+                    disabled={isLoading}
                     onChange={() => {
                       const newValue = !useLLMPersonalDataDetection;
                       setUseLLMPersonalDataDetection(newValue);
