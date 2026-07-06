@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 
 from ..config import settings
+from ..security import sanitize_for_spreadsheet_export
 
 
 from src.services.outlier_detection.xgbod_runtime import load_artifacts, score_xgbod
@@ -74,9 +75,10 @@ def data_quality_redirect():
 # Outlier Detection UI (XGBOD)
 # -------------------------------------------------------------------
 def _to_excel_bytes(df: pd.DataFrame) -> bytes:
+    safe_df = sanitize_for_spreadsheet_export(df)
     bio = BytesIO()
     with pd.ExcelWriter(bio, engine="xlsxwriter") as w:
-        df.to_excel(w, index=False, sheet_name="results")
+        safe_df.to_excel(w, index=False, sheet_name="results")
     bio.seek(0)
     return bio.getvalue()
 
@@ -139,7 +141,7 @@ def outlier_process():
 
     res_csv  = run_dir / "results.csv"
     res_xlsx = run_dir / "results.xlsx"
-    res_df.to_csv(res_csv, index=False)
+    sanitize_for_spreadsheet_export(res_df).to_csv(res_csv, index=False)
     res_xlsx.write_bytes(_to_excel_bytes(res_df))
 
     inliers  = res_df.loc[res_df["detected outliers"] == 0]
@@ -150,8 +152,8 @@ def outlier_process():
     in_xlsx = run_dir / "inliers_no_outliers.xlsx"
     out_csv = run_dir / "only_outliers.csv"
     out_xlsx = run_dir / "only_outliers.xlsx"
-    inliers.to_csv(in_csv, index=False)
-    outliers.to_csv(out_csv, index=False)
+    sanitize_for_spreadsheet_export(inliers).to_csv(in_csv, index=False)
+    sanitize_for_spreadsheet_export(outliers).to_csv(out_csv, index=False)
     in_xlsx.write_bytes(_to_excel_bytes(inliers))
     out_xlsx.write_bytes(_to_excel_bytes(outliers))
 
@@ -205,4 +207,3 @@ def labelling_redirect():
 def deblurring_redirect():
     target = settings.DEBLURRING_SERVICE_URL
     return redirect(target)
-

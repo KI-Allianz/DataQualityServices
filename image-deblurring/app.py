@@ -1,11 +1,25 @@
 import streamlit as st
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import zipfile
 import io
+import warnings
 import torch
 import torchvision.transforms as transforms
 import onnxruntime as ort
 import numpy as np
+from pathlib import PurePosixPath
+
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".tif", ".tiff"}
+ALLOWED_IMAGE_FORMATS = {"PNG", "TIFF"}
+MAX_ZIP_BYTES = 250 * 1024 * 1024
+MAX_IMAGE_COUNT = 100
+MAX_IMAGE_BYTES = 50 * 1024 * 1024
+MAX_TOTAL_UNCOMPRESSED_BYTES = 500 * 1024 * 1024
+MAX_COMPRESSION_RATIO = 100
+MAX_IMAGE_PIXELS = 50_000_000
+
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+warnings.simplefilter("error", Image.DecompressionBombWarning)
 
 # --- Globale CSS & Logos ---
 def apply_css():
@@ -51,14 +65,64 @@ def show_landing_page():
         st.session_state.page = "upload"
 
 # --- ZIP-Verarbeitung & Bildvorschau ---
+def _is_safe_zip_member(file_name):
+    path = PurePosixPath(file_name)
+    return (
+        file_name
+        and not path.is_absolute()
+        and ".." not in path.parts
+    )
+
+def _validate_image_bytes(file_name, image_bytes):
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        raise ValueError(f"{file_name} is too large.")
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            img.verify()
+            if img.format not in ALLOWED_IMAGE_FORMATS:
+                raise ValueError(f"{file_name} is not a supported image format.")
+            if img.width * img.height > MAX_IMAGE_PIXELS:
+                raise ValueError(f"{file_name} has too many pixels.")
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise ValueError(f"{file_name} is not a valid image.") from exc
+
+    return io.BytesIO(image_bytes)
+
 def extract_zip(uploaded_zip):
+    if getattr(uploaded_zip, "size", 0) > MAX_ZIP_BYTES:
+        raise ValueError("The ZIP file is too large.")
+
     zip_bytes = io.BytesIO(uploaded_zip.read())
     png_images = []
     with zipfile.ZipFile(zip_bytes, 'r') as zip_ref:
-        for file_name in zip_ref.namelist():
-            if file_name.lower().endswith('.png'):
-                with zip_ref.open(file_name) as f:
-                    png_images.append((file_name, io.BytesIO(f.read())))
+        infos = zip_ref.infolist()
+        total_uncompressed = sum(info.file_size for info in infos)
+        if total_uncompressed > MAX_TOTAL_UNCOMPRESSED_BYTES:
+            raise ValueError("The ZIP file expands to too much data.")
+
+        for info in infos:
+            if info.is_dir():
+                continue
+
+            file_name = info.filename
+            if not _is_safe_zip_member(file_name):
+                raise ValueError(f"Unsafe ZIP entry detected: {file_name}")
+
+            suffix = PurePosixPath(file_name).suffix.lower()
+            if suffix not in ALLOWED_IMAGE_EXTENSIONS:
+                continue
+
+            if len(png_images) >= MAX_IMAGE_COUNT:
+                raise ValueError(f"Too many images. Maximum allowed: {MAX_IMAGE_COUNT}.")
+            if info.file_size > MAX_IMAGE_BYTES:
+                raise ValueError(f"{file_name} is too large.")
+            if info.compress_size and info.file_size / info.compress_size > MAX_COMPRESSION_RATIO:
+                raise ValueError(f"{file_name} has a suspicious compression ratio.")
+
+            with zip_ref.open(info) as f:
+                png_images.append((file_name, _validate_image_bytes(file_name, f.read())))
+
     return png_images
 
 def show_image_navigation(images, key_prefix):
@@ -77,12 +141,14 @@ def process_images(images):
     session = get_onnx_session()
     results = []
     for name, img_data in images:
+        img_data.seek(0)
         img = Image.open(img_data).convert("RGB")
         tensor = torch.unsqueeze(transforms.ToTensor()(img), 0)
         tensor = torch.permute(tensor, (0,2,3,1))
         tensor = tensor.cuda() if torch.cuda.is_available() else tensor
         out = session.run(None, {"input": tensor.cpu().numpy()})[0]
         out = (np.squeeze(out) * 255).clip(0, 255).astype(np.uint8)
+        img_data.seek(0)
         results.append({"name": name, "blurred": img_data, "deblurred": Image.fromarray(out)})
     st.session_state.process_result = results
 
@@ -93,7 +159,8 @@ def create_zip(process_result):
         for d in process_result:
             img_buf = io.BytesIO()
             d["deblurred"].save(img_buf, format="PNG")
-            zf.writestr(d["name"][:-4]+"_processed.png", img_buf.getvalue())
+            output_name = f"{PurePosixPath(d['name']).stem}_processed.png"
+            zf.writestr(output_name, img_buf.getvalue())
     buf.seek(0)
     return buf
 
@@ -115,13 +182,20 @@ def show_upload_page():
     
     uploaded_zip = st.file_uploader("Drag and drop file here", type=["zip"], accept_multiple_files=False)
     if uploaded_zip:
-        images = extract_zip(uploaded_zip)
+        try:
+            images = extract_zip(uploaded_zip)
+        except (zipfile.BadZipFile, ValueError) as exc:
+            st.error(f"Upload rejected: {exc}")
+            return
+
         if images:
             show_image_navigation(images, "upload")
             if st.button("Process Images"):
                 with st.spinner("Processing..."):
                     process_images(images)
                     st.session_state.page = "results"
+        else:
+            st.warning("No supported PNG/TIF images were found in the ZIP file.")
 
 # --- Results Page ---
 def show_results_page():

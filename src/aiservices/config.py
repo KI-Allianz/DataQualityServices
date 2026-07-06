@@ -41,11 +41,10 @@ class Settings:
     catalogues_url: str = os.getenv("CATALOGUES_URL", "https://ki-datenraum.hlrs.de/catalogues?locale=de")
 
     LABELLING_SERVICES_URL: str = os.getenv("LABELLING_SERVICES_URL", "http://localhost:8501")
-    DEBLURRING_SERVICE_URL: str = os.getenv("DEBLURRING_SERVICE_URLL", "http://localhost:8502")
+    DEBLURRING_SERVICE_URL: str = os.getenv("DEBLURRING_SERVICE_URL", "http://localhost:8502")
     DATAQUALITY_SERVICE_URL: str = os.getenv("DATAQUALITY_SERVICE_URL", "http://localhost:8503")
 
 
 settings = Settings()
 
 os.makedirs(settings.output_dir, exist_ok=True)
-

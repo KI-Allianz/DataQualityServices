@@ -17,6 +17,7 @@ A unified AI platform offering **Data Quality Analysis**, **Outlier Detection**,
 - **REST API routes available** 
 - Supports **CSV/XLSX uploads**, runs inference, and exports results
 - Integration with **Piveau Hub** for dataset publishing.
+- Security hardening for uploads, JSON APIs, spreadsheet exports, secrets, Flask runtime configuration, and model artifact loading.
 - Fully containerized using **Docker and docker-compose**
 - Easy to extend with more AI services
 
@@ -119,12 +120,56 @@ Key module: `xgbod_runtime.py`
 
 Create `.env` file:
 ```bash
+SECRET_KEY=<generate-with-python-secrets-token-hex>
 OUTPUT_DIR=./output
 XGBOD_ARTIFACTS_DIR=./artifacts
-PIVEAU_TOKEN=<optional>
-HUB_STORE_URL=<optional>
-HUB_STORE_BUCKET=ai-results
+
+# JSON API safety limits
+MAX_RECORDS=50000
+MAX_COLUMNS=500
+MAX_CELL_CHARS=10000
+
+# DataQuality upload safety limits
+DATAQUALITY_MAX_UPLOAD_ROWS=50000
+DATAQUALITY_MAX_UPLOAD_COLUMNS=500
+
+# Flask runtime
+FLASK_DEBUG=false
+
+# Piveau / MinIO publishing
+MINIO_ENDPOINT=<optional>
+MINIO_ACCESS_KEY=<optional>
+MINIO_SECRET_KEY=<optional>
+MINIO_BUCKET=<optional>
+PIVEAU_BASE=<optional>
+PIVEAU_AUTH_TOKEN=<optional>
+PIVEAU_AUTH_SCHEME=Bearer
+PIVEAU_CATALOG_ID=dataservices
 ```
+
+Generate a local development secret with:
+
+```bash
+python3 -c "import secrets; print('SECRET_KEY=' + secrets.token_hex(32))" > .env
+```
+
+Do not commit `.env` files or generated Flask session files.
+
+---
+
+## Security Notes
+
+The services include several OWASP-oriented hardening measures:
+
+- Secrets are read from environment variables. The Piveau publisher no longer contains a hardcoded fallback token and fails clearly when `PIVEAU_BASE` or `PIVEAU_AUTH_TOKEN` is missing.
+- Flask debug mode is disabled by default and must be explicitly enabled with `FLASK_DEBUG=true` for local debugging.
+- JSON API requests are validated before pandas `DataFrame` creation using `MAX_RECORDS`, `MAX_COLUMNS`, and `MAX_CELL_CHARS`.
+- DataQuality uploads are capped with `DATAQUALITY_MAX_UPLOAD_ROWS` and `DATAQUALITY_MAX_UPLOAD_COLUMNS`.
+- CSV, XLSX, and ZIP exports neutralize spreadsheet formulas so values starting with characters such as `=`, `+`, `-`, or `@` are exported as text.
+- Image Deblurring ZIP uploads are validated for safe paths, supported image types, image count, compressed/uncompressed size, suspicious compression ratios, and maximum pixel count before processing.
+- Flask session folders are ignored by Git, and committed session files were removed.
+- User-provided "contains" filters use literal string matching instead of regular expressions.
+- XGBOD model artifacts are loaded only from known files under the configured artifacts directory.
 
 ---
 

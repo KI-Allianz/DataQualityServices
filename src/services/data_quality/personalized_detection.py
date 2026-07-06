@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 OPS = {
     "==": operator.eq, "!=": operator.ne, ">": operator.gt, "<": operator.lt,
     ">=": operator.ge, "<=": operator.le,
-    "contains": lambda a, b: a.astype(str).str.contains(str(b), na=False),
+    "contains": lambda a, b: a.astype(str).str.contains(str(b), na=False, regex=False),
 }
 
 def apply_rules(df: pd.DataFrame, rules: List[Dict[str, Any]]) -> pd.DataFrame:
